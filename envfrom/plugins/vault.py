@@ -24,6 +24,12 @@ class Vault(Plugin):
         if addr is None:
             addr = os.environ.get("VAULT_ADDR", "https://127.0.0.1:8200")
         self.client = hvac.Client(url=addr)
+
+        if "KUBERNETES_PORT" in os.environ:
+            f = open('/var/run/secrets/kubernetes.io/serviceaccount/token')
+            jwt = f.read()
+            self.client.auth_kubernetes("default", jwt)
+
         self.engine = self.client.secrets.kv.v2
         super().__init__(self)
 
@@ -49,7 +55,7 @@ class Vault(Plugin):
                 env[key] = self.get_secret(value[6:])
 
         for path in self.paths:
-            for key, value in self.get_secret(path):
+            for key, value in self.get_secret(path).items():
                 env[key.upper()] = value
         return env
 
